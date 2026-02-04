@@ -75,7 +75,7 @@ in
       };
       commonConfig = lib.mkOption {
         type = lib.types.str;
-        default = pkgs.hydownloader.passthru.importJob.commonConfig;
+        default = cfg.package.passthru.importJob.commonConfig;
         description = "Common configuration for the import job; typically includes hydrus client credentials and tag services";
       };
       postCommonConfig = lib.mkOption {
@@ -88,17 +88,17 @@ in
       };
       defaultImportJob = lib.mkOption {
         type = lib.types.str;
-        default = pkgs.hydownloader.passthru.importJob.defaultImportJob;
+        default = cfg.package.passthru.importJob.defaultImportJob;
         description = "Sets up the default import job used by all of the rules by default";
       };
       defaultRules = lib.mkOption {
         type = lib.types.str;
-        default = pkgs.hydownloader.passthru.importJob.defaultRules;
+        default = cfg.package.passthru.importJob.defaultRules;
         description = "Sets up the default rule set used for all files without more specific rule sets";
       };
       rules = lib.mkOption {
         type = lib.types.attrsOf lib.types.str;
-        default = pkgs.hydownloader.passthru.importJob.rules;
+        default = cfg.package.passthru.importJob.rules;
         description = "Rules configuration for specific sites";
       };
     };
@@ -139,7 +139,7 @@ in
       allowedTCPPorts = [ cfg.config.daemonPort ];
     };
     environment.systemPackages = [
-      pkgs.hydownloader
+      cfg.package
     ];
     systemd.services.hydownloader = {
       description = "Hydownloader Daemon";

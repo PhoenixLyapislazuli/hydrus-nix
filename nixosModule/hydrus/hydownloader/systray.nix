@@ -10,6 +10,12 @@ in
 {
   options.programs.hydownloader-systray = {
     enable = lib.mkEnableOption "Hydownloader systray";
+    package = lib.mkOption {
+      type = lib.types.package;
+      default = pkgs.hydownloader-systray;
+      defaultText = lib.literalExpression "pkgs.hydownloader-systray";
+      description = "The hydownloader-systray package to use";
+    };
     environmentFile = lib.mkOption {
       type = lib.types.nullOr lib.types.path;
       default = config.services.hydrus.environmentFile;
@@ -91,7 +97,7 @@ in
 
   config = lib.mkIf cfg.enable {
     services.hydrus.createUser = lib.mkDefault true;
-    environment.systemPackages = [ pkgs.hydownloader-systray ];
+    environment.systemPackages = [ cfg.package ];
     system.activationScripts.hydownloader-systray = lib.stringAfter [ "var" ] ''
       ${lib.optionalString (cfg.environmentFile != null) ''
         if [ -f "${cfg.environmentFile}" ]; then
