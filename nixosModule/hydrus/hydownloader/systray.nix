@@ -3,11 +3,10 @@
   lib,
   pkgs,
   ...
-}:
-let
+}: let
   cfg = config.programs.hydownloader-systray;
-in
-{
+  cfgDaemon = config.services.hydrus.hydownloader.daemon;
+in {
   options.programs.hydownloader-systray = {
     enable = lib.mkEnableOption "Hydownloader systray";
     package = lib.mkOption {
@@ -16,35 +15,20 @@ in
       defaultText = lib.literalExpression "pkgs.hydownloader-systray";
       description = "The hydownloader-systray package to use";
     };
-    environmentFile = lib.mkOption {
-      type = lib.types.nullOr lib.types.path;
-      default = config.services.hydrus.environmentFile;
-      description = "Environment file containing the hydownloader access key as HYDOWNLOADER_ACCESS_KEY.";
-    };
-    user = lib.mkOption {
-      type = lib.types.str;
-      default = config.services.hydrus.user;
-      description = "User account which owns the hydownloader systray config.ini.";
-    };
-    group = lib.mkOption {
-      type = lib.types.str;
-      default = config.services.hydrus.group;
-      description = "Group which owns the hydownloader systray config.ini.";
-    };
     settings = {
       instanceNames = lib.mkOption {
         type = lib.types.listOf lib.types.str;
-        default = [ "default instance" ];
+        default = ["default instance"];
         description = "Instance names for hydownloader. Each instance is identified by its name in hydownloader-systray.";
       };
       apiURL = lib.mkOption {
         type = lib.types.listOf lib.types.str;
-        default = [ "http://127.0.0.1:53211" ];
+        default = ["http://127.0.0.1:53211"];
         description = "URL(s) of your hydownloader instance(s). Must match the number of instance names.";
       };
       defaultTests = lib.mkOption {
         type = lib.types.listOf lib.types.str;
-        default = [ "environment" ];
+        default = ["environment"];
         description = "Test names to prefill when starting tests from hydownloader-systray.";
       };
       defaultSubCheckInterval = lib.mkOption {
@@ -95,36 +79,36 @@ in
     };
   };
 
-  config = lib.mkIf cfg.enable {
+  config = lib.mkIf (cfg.enable && cfgDaemon.enable) {
     services.hydrus.createUser = lib.mkDefault true;
-    environment.systemPackages = [ cfg.package ];
-    system.activationScripts.hydownloader-systray = lib.stringAfter [ "var" ] ''
-      ${lib.optionalString (cfg.environmentFile != null) ''
-        if [ -f "${cfg.environmentFile}" ]; then
-          set -a  # Automatically export all variables
-          source "${cfg.environmentFile}"
-          set +a
-        fi
-      ''}
-      mkdir -p /etc/hydownloader-systray
-      chmod 0750 /etc/hydownloader-systray
-      chown ${cfg.user}:${cfg.group} /etc/hydownloader-systray
-      echo "instanceNames=${lib.concatStringsSep "," cfg.settings.instanceNames}
-      accessKey=''${HYDOWNLOADER_ACCESS_KEY:-your access key here}
-      apiURL=${lib.concatStringsSep "," cfg.settings.apiURL}
-      defaultTests=${lib.concatStringsSep "," cfg.settings.defaultTests}
-      defaultSubCheckInterval=${toString cfg.settings.defaultSubCheckInterval}
-      applyDarkPalette=${lib.boolToString cfg.settings.applyDarkPalette}
-      updateInterval=${toString cfg.settings.updateInterval}
-      startVisible=${lib.boolToString cfg.settings.startVisible}
-      aggressiveUpdates=${lib.boolToString cfg.settings.aggressiveUpdates}
-      localConnection=${lib.boolToString cfg.settings.localConnection}
-      disablePreviews=${lib.boolToString cfg.settings.disablePreviews}
-      forceStyle=${cfg.settings.forceStyle}
-      userCss=${cfg.settings.userCss}" | \
-        ${pkgs.coreutils}/bin/install \
-        -m 0640 -o ${cfg.user} -g ${cfg.group} \
-        /dev/stdin /etc/hydownloader-systray/settings.ini
-    '';
+    environment.systemPackages = [cfg.package];
+
+    systemd.services.hydownloader = {
+      preStart = ''
+        ${lib.optionalString (cfgDaemon.environmentFile != null) ''
+          if [ -f "${cfgDaemon.environmentFile}" ]; then
+            set -a  # Automatically export all variables
+            source "${cfgDaemon.environmentFile}"
+            set +a
+          fi
+        ''}
+        echo "instanceNames=${lib.concatStringsSep "," cfg.settings.instanceNames}
+        accessKey=''${HYDOWNLOADER_ACCESS_KEY:-your access key here}
+        apiURL=${lib.concatStringsSep "," cfg.settings.apiURL}
+        defaultTests=${lib.concatStringsSep "," cfg.settings.defaultTests}
+        defaultSubCheckInterval=${toString cfg.settings.defaultSubCheckInterval}
+        applyDarkPalette=${lib.boolToString cfg.settings.applyDarkPalette}
+        updateInterval=${toString cfg.settings.updateInterval}
+        startVisible=${lib.boolToString cfg.settings.startVisible}
+        aggressiveUpdates=${lib.boolToString cfg.settings.aggressiveUpdates}
+        localConnection=${lib.boolToString cfg.settings.localConnection}
+        disablePreviews=${lib.boolToString cfg.settings.disablePreviews}
+        forceStyle=${cfg.settings.forceStyle}
+        userCss=${cfg.settings.userCss}" | \
+          ${pkgs.coreutils}/bin/install \
+          -m 0640 -o ${cfgDaemon.user} -g ${cfgDaemon.group} \
+          /dev/stdin ${cfgDaemon.dataDir}/settings.ini
+      '';
+    };
   };
 }
